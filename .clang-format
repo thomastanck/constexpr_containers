@@ -1,0 +1,6 @@
+BasedOnStyle: Mozilla
+
+FixNamespaceComments: true
+AlwaysBreakAfterDefinitionReturnType: None
+AlwaysBreakAfterReturnType: None
+ColumnLimit: 100
