@@ -98,6 +98,35 @@ public:
     m_end = m_realend;
   }
 
+  // Tighter overload to reserve up front
+  template<std::random_access_iterator RandomAccessIt>
+  constexpr vector(RandomAccessIt first, RandomAccessIt last, const Allocator& alloc = Allocator())
+    : m_alloc(alloc)
+  {
+    if (first < last) {
+      allocate(last - first);
+      m_end = m_begin;
+      for (const auto& elem : make_range(first, last)) {
+        push_back(elem);
+      }
+    } else {
+      m_begin = m_end = m_realend = nullptr;
+    }
+  }
+
+  // Looser overload that allows any input iterator
+  template<std::input_iterator InputIt>
+  constexpr vector(InputIt first, InputIt last, const Allocator& alloc = Allocator())
+    : m_begin(nullptr)
+    , m_end(nullptr)
+    , m_realend(nullptr)
+    , m_alloc(alloc)
+  {
+    for (const auto& elem : make_range(first, last)) {
+      push_back(elem);
+    }
+  }
+
   constexpr vector(std::initializer_list<T> il, const Allocator& alloc = Allocator())
     : m_alloc(alloc)
   {
