@@ -7,6 +7,13 @@ that will not compile on older compilers.
 Mainly a project to show that it is indeed possible
 to write a constexpr vector in GCC / Clang, it's just very tedious. :)
 
+# Quick setup
+
+1) Clone this repo somewhere
+2) Add `-I/path/to/constexpr-vector/include` somewhere to your build flags
+3) Include with `#include "simple/vector.h"`
+4) Instantiate with `simple::vector`
+
 # Roadmap
 
 - (DONE) Proof of concept
