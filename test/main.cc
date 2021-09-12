@@ -1,8 +1,9 @@
-#include "simple/container_algorithm.h"
-#include "simple/vector.h"
 #include <array>
 #include <iostream>
 #include <iterator>
+
+#include "simple/container_algorithm.h"
+#include "simple/vector.h"
 
 constexpr auto f()
 {

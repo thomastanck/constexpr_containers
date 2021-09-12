@@ -4,15 +4,16 @@ LIBSRCS := \
 #
 
 MAINSRCS := \
-	test/main.cc \
-	test/vector.cc \
 	test/container_algorithm.cc \
+	test/main.cc \
+	test/vector_base.cc \
+	test/vector.cc \
 #
 
 ALLSRCS := ${MAINSRCS} ${LIBSRCS}
 
 CXX ?= g++
-CXXFLAGS ?= -Irange-v3/include -Iinclude -std=c++20 -Wall -Wextra -g
+CXXFLAGS ?= -Iinclude -std=c++20 -Wall -Wextra -g
 LDFLAGS ?=
 LDLIBS ?=
 
