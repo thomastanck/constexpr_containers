@@ -20,5 +20,6 @@ to write a constexpr vector in GCC / Clang, it's just very tedious. :)
 - (DONE) Allocator aware
 - Finish implementing the last few modifier functions
 - Write a constexpr test suite as well as integrate with some runtime test runner
+- Implement optional bounds checked iterators (like MSVC in debug mode)
 - Write some simple benchmarks against std::vector
 - (Maybe?) Write some compile-time benchmarks
