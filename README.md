@@ -23,3 +23,4 @@ to write a constexpr vector in GCC / Clang, it's just very tedious. :)
 - Implement optional bounds checked iterators (like MSVC in debug mode)
 - Write some simple benchmarks against std::vector
 - (Maybe?) Write some compile-time benchmarks
+- (Maybe?) Implement some other containers like list
