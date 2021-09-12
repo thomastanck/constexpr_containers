@@ -583,6 +583,58 @@ public:
     emplace_back(std::forward<T>(v));
   }
 
+  // Conditionally strong exception guarantee
+  // as long as value_type is nothrow assignable and constructible either by move or copy.
+  template<typename... T>
+  constexpr //
+    PtrT
+    emplace(ConstPtrT pos, T&&... args)
+  {
+    if (pos == m_end) {
+      emplace_back(args...);
+      return m_end - 1;
+    }
+
+    if (m_end == m_realend) {
+      // We need to realloc
+      auto index = pos - m_begin;
+      auto oldsize = size();
+      auto newcap = size() * 2;
+      auto tmp = allocate_tmp(newcap, m_alloc);
+      try {
+        // construct new value into tmp, we should do this first in case input is part of the vector
+        AllocTraitsT::construct(m_alloc, tmp + index, std::forward<T>(args)...);
+        // move existing values if noexcept, else copy
+        uninitialized_move_if_noexcept_launder(m_begin, pos, tmp, m_alloc);
+        uninitialized_move_if_noexcept_launder(pos, m_end, tmp + index + 1, m_alloc);
+      } catch (...) {
+        AllocTraitsT::deallocate(m_alloc, tmp, newcap);
+        throw;
+      }
+      // buffer is ready, do the swap
+      AllocTraitsT::deallocate(m_alloc, m_begin, capacity());
+      m_begin = tmp;
+      m_end = tmp + oldsize + 1;
+      m_realend = tmp + newcap;
+      return m_begin + index;
+    }
+
+    // No realloc needed
+    // We're allowed to UB if the move / copy constructor / assignment throws
+    // ... unfortunately we can't shift the elements first, THEN construct
+    // because if the constructor throws we aren't supposed to UB
+    // So we start by constructing the element into a temporary that we move into place later.
+    auto tmp = ValueT(std::forward<T>(args)...);
+    // After this point, everything is either allowed to UB or is noexcept :)
+
+    // Shift elements back
+    uninitialized_move_if_noexcept_launder(m_end - 1, m_end, m_end, m_alloc);
+    move_if_noexcept_launder(pos, m_end - 1, pos + 1, m_alloc);
+    // Now move the tmp var into place
+    *pos = std::move_if_noexcept(tmp);
+    return pos;
+  }
+
   ///////////////////////
   // Removal modifiers //
   ///////////////////////
