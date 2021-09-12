@@ -179,7 +179,7 @@ public:
     // don't self-assign
     if (this != &other) {
       if constexpr (AllocTraitsT::propagate_on_container_copy_assignment::value) {
-        if (!AllocTraitsT::is_always_equal::value and m_alloc != other.m_alloc) {
+        if (not AllocTraitsT::is_always_equal::value and m_alloc != other.m_alloc) {
           deallocate();
         }
         allocate_empty(other.size());
@@ -229,7 +229,7 @@ public:
              AllocTraitsT::is_always_equal::value)
   {
     if constexpr (AllocTraitsT::propagate_on_container_move_assignment::value) {
-      if (!AllocTraitsT::is_always_equal::value and m_alloc != other.m_alloc) {
+      if (not AllocTraitsT::is_always_equal::value and m_alloc != other.m_alloc) {
         m_alloc = other.m_alloc;
       }
       deallocate();
@@ -238,7 +238,7 @@ public:
       m_realend = other.m_realend;
       other.m_begin = other.m_end = other.m_realend = nullptr;
     } else {
-      if (!AllocTraitsT::is_always_equal::value and m_alloc != other.m_alloc) {
+      if (not AllocTraitsT::is_always_equal::value and m_alloc != other.m_alloc) {
         // We must move-assign elements :(
         if (other.size() > capacity()) {
           // We must realloc, so directly move into new buffer
@@ -535,7 +535,7 @@ public:
     clear() //
     noexcept
   {
-    while (!empty()) {
+    while (not empty()) {
       pop_back();
     }
   }
