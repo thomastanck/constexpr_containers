@@ -1,16 +1,11 @@
 OUT ?= build
 
-LIBSRCS := \
+TARGETS := \
+	test/algorithm \
+	test/main \
+	test/vector_base \
+	test/vector \
 #
-
-MAINSRCS := \
-	test/algorithm.cc \
-	test/main.cc \
-	test/vector_base.cc \
-	test/vector.cc \
-#
-
-ALLSRCS := ${MAINSRCS} ${LIBSRCS}
 
 CXX ?= g++
 CXXFLAGS ?= -Iinclude -std=c++20 -Wall -Wextra -g
@@ -22,9 +17,9 @@ ifeq ($(SANITIZE),1)
 	LDFLAGS += -fsanitize=address,undefined
 endif
 
-all: $(OUT)/main
+all: $(patsubst %,$(OUT)/%,$(TARGETS))
 
-$(OUT)/main: $(patsubst %,$(OUT)/%.o,$(MAINSRCS)) $(patsubst %,$(OUT)/%.o,$(LIBSRCS))
+$(OUT)/%: $(patsubst %,$(OUT)/%.cc.o,%)
 	@mkdir -p $(@D)
 	$(CXX) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
@@ -36,7 +31,7 @@ $(OUT)/%.cc.d: %.cc
 	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) -MM -MT "$(patsubst %,$(OUT)/%.o,$<) $(patsubst %,$(OUT)/%.d,$<)" -o $@ $<
 
-include $(patsubst %,$(OUT)/%.d,$(ALLSRCS))
+include $(patsubst %,$(OUT)/%.cc.d,$(TARGETS))
 
 .PHONY: clean
 clean:
