@@ -390,9 +390,9 @@ public:
   /////////////
   // Getters //
   /////////////
-  [[nodiscard]] constexpr /***/ pointer data() /************/ noexcept { return m_begin; }
-  [[nodiscard]] constexpr const_pointer data() /******/ const noexcept { return m_begin; }
-  [[nodiscard]] constexpr /****/ Allocator get_allocator() const noexcept { return m_alloc; }
+  [[nodiscard]] constexpr /********/ pointer data() /************/ noexcept { return m_begin; }
+  [[nodiscard]] constexpr /**/ const_pointer data() /******/ const noexcept { return m_begin; }
+  [[nodiscard]] constexpr /******/ Allocator get_allocator() const noexcept { return m_alloc; }
 
   [[nodiscard]] constexpr /***/ reference front() /********/ noexcept { return *m_begin; }
   [[nodiscard]] constexpr const_reference front() /**/ const noexcept { return *m_begin; }
