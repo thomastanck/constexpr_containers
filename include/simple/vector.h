@@ -19,6 +19,10 @@ template<typename ValueT, typename AllocT = std::allocator<ValueT>>
 struct vector
 {
 
+  //////////////////
+  // Member types //
+  //////////////////
+
   using AllocTraitsT = std::allocator_traits<AllocT>;
   using InitListT = std::initializer_list<ValueT>;
   using PtrT = ValueT*;
@@ -41,15 +45,25 @@ struct vector
   using reverse_iterator = RevPtrT;
   using reverse_const_iterator = RevConstPtrT;
 
+  /////////////////
+  // Data layout //
+  /////////////////
+private:
   PtrT m_begin;
   PtrT m_end;
   PtrT m_realend;
   [[no_unique_address]] AllocT m_alloc;
 
+public:
+  //////////////////
+  // Constructors //
+  //////////////////
+
   constexpr vector() noexcept(noexcept(AllocT()))
     : m_begin(nullptr)
     , m_end(nullptr)
     , m_realend(nullptr)
+    , m_alloc()
   {}
 
   constexpr vector(const AllocT alloc) noexcept
@@ -81,6 +95,20 @@ struct vector
     }
     m_end = m_realend;
   }
+
+  constexpr vector(InitListT il, const AllocT& alloc = AllocT())
+    : m_alloc(alloc)
+  {
+    allocate(il.size());
+    m_end = m_begin;
+    for (const auto& elem : il) {
+      push_back(elem);
+    }
+  }
+
+  /////////////////////////////////////////////////////////
+  // Special member functions (and similar constructors) //
+  /////////////////////////////////////////////////////////
 
   constexpr //
     vector(const vector& other)
@@ -127,17 +155,6 @@ struct vector
     }
   }
 
-  constexpr vector(InitListT il, const AllocT& alloc = AllocT())
-    : m_alloc(alloc)
-  {
-    allocate(il.size());
-    m_end = m_begin;
-    for (const auto& elem : il) {
-      push_back(elem);
-    }
-  }
-
-  // Basic exception guarantee
   constexpr //
     vector&
     operator=(const vector& other)
@@ -301,16 +318,39 @@ struct vector
     std::swap(m_realend, other.m_realend);
   }
 
+  template<typename T>
+  friend //
+    void
+    swap(vector<T>& a, vector<T>& b) //
+    noexcept(AllocTraitsT::propagate_on_container_swap::value ||
+             AllocTraitsT::is_always_equal::value)
+  {
+    a.swap(b);
+  }
+
   constexpr ~vector() { deallocate(); }
 
-  [[nodiscard]] constexpr /*****/ AllocT get_allocator() const noexcept { return m_alloc; }
+private:
+  constexpr void check_range(size_t n) const
+  {
+    if (n >= size()) {
+      // TODO: do fancier formatting when I implement constexpr string (?)
+      throw std::out_of_range("Bounds check failed.");
+    }
+  }
 
-  [[nodiscard]] constexpr /**/ RefT at(size_t i)
+public:
+  [[nodiscard]] constexpr //
+    RefT
+    at(size_t i)
   {
     check_range(i);
     return *this[i];
   }
-  [[nodiscard]] constexpr ConstRefT at(size_t i) const
+  [[nodiscard]] constexpr //
+    ConstRefT
+    at(size_t i) //
+    const
   {
     check_range(i);
     return *this[i];
@@ -331,22 +371,17 @@ struct vector
     return *std::launder(m_begin + i);
   }
 
-private:
-  constexpr void check_range(size_t n) const
-  {
-    if (n >= size()) {
-      // TODO: do fancier formatting when I implement constexpr string (?)
-      throw std::out_of_range("Bounds check failed.");
-    }
-  }
-
-public:
-  [[nodiscard]] constexpr /**/ RefT front() /*********/ noexcept { return *m_begin; }
-  [[nodiscard]] constexpr ConstRefT front() /***/ const noexcept { return *m_begin; }
-  [[nodiscard]] constexpr /**/ RefT back() /**********/ noexcept { return *(m_end - 1); }
-  [[nodiscard]] constexpr ConstRefT back() /****/ const noexcept { return *(m_end - 1); }
+  /////////////
+  // Getters //
+  /////////////
   [[nodiscard]] constexpr /*******/ PtrT data() /************/ noexcept { return m_begin; }
   [[nodiscard]] constexpr /**/ ConstPtrT data() /******/ const noexcept { return m_begin; }
+  [[nodiscard]] constexpr /*****/ AllocT get_allocator() const noexcept { return m_alloc; }
+
+  [[nodiscard]] constexpr /**/ RefT front() /********/ noexcept { return *m_begin; }
+  [[nodiscard]] constexpr ConstRefT front() /**/ const noexcept { return *m_begin; }
+  [[nodiscard]] constexpr /**/ RefT back() /*********/ noexcept { return *(m_end - 1); }
+  [[nodiscard]] constexpr ConstRefT back() /***/ const noexcept { return *(m_end - 1); }
 
   [[nodiscard]] constexpr /**/ PtrT begin() /*********/ noexcept { return m_begin; }
   [[nodiscard]] constexpr ConstPtrT begin() /***/ const noexcept { return m_begin; }
@@ -355,25 +390,16 @@ public:
   [[nodiscard]] constexpr ConstPtrT cbegin() /**/ const noexcept { return m_begin; }
   [[nodiscard]] constexpr ConstPtrT cend() /****/ const noexcept { return m_end; }
 
-private:
-  template<typename T>
-  [[nodiscard]] constexpr static decltype(auto) mk_rev(T x) noexcept
-  {
-    return std::make_reverse_iterator<T>(x);
-  }
-
-public:
-  [[nodiscard]] constexpr /**/ RevPtrT rbegin() /*********/ noexcept { return mk_rev(m_begin); }
-  [[nodiscard]] constexpr RevConstPtrT rbegin() /***/ const noexcept { return mk_rev(m_begin); }
-  [[nodiscard]] constexpr /**/ RevPtrT rend() /***********/ noexcept { return mk_rev(m_end); }
-  [[nodiscard]] constexpr RevConstPtrT rend() /*****/ const noexcept { return mk_rev(m_end); }
-  [[nodiscard]] constexpr RevConstPtrT crbegin() /**/ const noexcept { return mk_rev(m_begin); }
-  [[nodiscard]] constexpr RevConstPtrT crend() /****/ const noexcept { return mk_rev(m_end); }
+  [[nodiscard]] constexpr /**/ RevPtrT rbegin() /*********/ noexcept { return m_begin; }
+  [[nodiscard]] constexpr RevConstPtrT rbegin() /***/ const noexcept { return m_begin; }
+  [[nodiscard]] constexpr /**/ RevPtrT rend() /***********/ noexcept { return m_end; }
+  [[nodiscard]] constexpr RevConstPtrT rend() /*****/ const noexcept { return m_end; }
+  [[nodiscard]] constexpr RevConstPtrT crbegin() /**/ const noexcept { return m_begin; }
+  [[nodiscard]] constexpr RevConstPtrT crend() /****/ const noexcept { return m_end; }
 
   [[nodiscard]] constexpr size_t size() /*******/ const noexcept { return m_end - m_begin; }
   [[nodiscard]] constexpr size_t capacity() /***/ const noexcept { return m_realend - m_begin; }
   [[nodiscard]] constexpr bool empty() /********/ const noexcept { return size() == 0; }
-
   [[nodiscard]] constexpr //
     size_t
     max_size() //
@@ -399,6 +425,9 @@ public:
     return !(*this == other);
   }
 
+  ////////////////////
+  // Size modifiers //
+  ////////////////////
   constexpr //
     void
     reserve(size_t new_cap)
@@ -475,10 +504,12 @@ public:
     if (count > capacity()) {
       auto tmp = allocate_tmp(count, m_alloc);
       try {
-        auto end = uninitialized_move_if_noexcept_launder(m_begin, m_end, tmp, m_alloc);
+        // We construct new elements first in case value is part of vector
+        auto end = tmp + size();
         for (; end < tmp + count; ++end) {
           AllocTraitsT::construct(m_alloc, end, value);
         }
+        end = uninitialized_move_if_noexcept_launder(m_begin, m_end, tmp, m_alloc);
         deallocate();
         m_begin = tmp;
         m_end = end;
@@ -500,12 +531,17 @@ public:
 
   constexpr //
     void
-    clear()
+    clear() //
+    noexcept
   {
     while (!empty()) {
       pop_back();
     }
   }
+
+  /////////////////////////
+  // Insertion modifiers //
+  /////////////////////////
 
   // Strong exception guarantee
   template<typename... T>
@@ -523,7 +559,7 @@ public:
     auto newcap = size() * 2;
     auto tmp = allocate_tmp(newcap, m_alloc);
     try {
-      // construct new value into tmp
+      // construct new value into tmp, we should do this first in case input is part of the vector
       AllocTraitsT::construct(m_alloc, tmp + oldsize, std::forward<T>(args)...);
       // move existing values if noexcept, else copy
       uninitialized_move_if_noexcept_launder(m_begin, m_end, tmp, m_alloc);
@@ -547,6 +583,10 @@ public:
     emplace_back(std::forward<T>(v));
   }
 
+  ///////////////////////
+  // Removal modifiers //
+  ///////////////////////
+
   constexpr //
     void
     pop_back() //
@@ -555,22 +595,26 @@ public:
     --m_end;
   }
 
-  template<typename T>
-  friend //
-    void
-    swap(vector<T>& a, vector<T>& b) //
-    noexcept
-  {
-    a.swap(b);
-  }
+
+  /////////////////////////////////////////
+  // Allocation / deallocation utilities //
+  /////////////////////////////////////////
 
 private:
   constexpr //
     void
     allocate(size_t capacity, AllocT& alloc)
   {
-    m_begin = AllocTraitsT::allocate(alloc, capacity);
-    m_realend = m_begin + capacity;
+    try {
+      m_begin = AllocTraitsT::allocate(alloc, capacity);
+      m_realend = m_begin + capacity;
+    } catch (...) {
+      if (capacity > max_size()) {
+        throw std::length_error("Tried to allocate too many elements.");
+      } else {
+        throw;
+      }
+    }
   }
 
   constexpr //
@@ -590,7 +634,8 @@ private:
 
   constexpr //
     void
-    deallocate()
+    deallocate() //
+    noexcept
   {
     clear();
     if (m_begin)
