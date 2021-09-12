@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <concepts>
 #include <cstddef>
 #include <initializer_list>
 #include <iterator>
@@ -31,6 +32,9 @@ struct vector
   using RevConstPtrT = std::reverse_iterator<const ValueT*>;
   using RefT = ValueT&;
   using ConstRefT = const ValueT&;
+  using CompT = std::conditional_t<std::three_way_comparable<ValueT>,
+                                   decltype(std::declval<ValueT>() <=> std::declval<ValueT>()),
+                                   std::weak_ordering>;
 
   using value_type = ValueT;
   using allocator_type = AllocT;
@@ -410,21 +414,6 @@ public:
     return std::min(diffmax, allocmax);
   }
 
-  [[nodiscard]] constexpr //
-    bool
-    operator==(const vector& other) //
-    const noexcept(noexcept(*begin() == *other.begin()))
-  {
-    return std::equal(begin(), end(), other.begin(), other.end());
-  }
-  [[nodiscard]] constexpr //
-    bool
-    operator!=(const vector& other) //
-    const noexcept(noexcept(*this == other))
-  {
-    return !(*this == other);
-  }
-
   ////////////////////
   // Size modifiers //
   ////////////////////
@@ -647,6 +636,40 @@ public:
     --m_end;
   }
 
+  //////////////////////////
+  // Comparison operators //
+  //////////////////////////
+
+  [[nodiscard]] constexpr //
+    bool
+    operator==(const vector& other)                      //
+    const noexcept(noexcept(*begin() == *other.begin())) //
+    requires std::equality_comparable<ValueT>
+  {
+    return std::equal(begin(), end(), other.begin(), other.end());
+  }
+
+  [[nodiscard]] constexpr //
+    CompT
+    operator<=>(const vector& other)                     //
+    const noexcept(noexcept(*begin() == *other.begin())) //
+    requires std::three_way_comparable<ValueT> ||        //
+    requires(const ValueT& elem)
+  {
+    elem < elem;
+  } //
+  {
+    if constexpr (std::three_way_comparable<ValueT>) {
+      return std::lexicographical_compare_three_way(m_begin, m_end, other.m_begin, other.m_end);
+    } else {
+      return std::lexicographical_compare_three_way(
+        m_begin, m_end, other.m_begin, other.m_end, [](const auto& a, const auto& b) {
+          return a < b ? std::weak_ordering::less :
+                 b < a ? std::weak_ordering::greater :
+                         std::weak_ordering::equivalent;
+        });
+    }
+  }
 
   /////////////////////////////////////////
   // Allocation / deallocation utilities //

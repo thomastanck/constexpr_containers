@@ -3,4 +3,5 @@ BasedOnStyle: Mozilla
 FixNamespaceComments: true
 AlwaysBreakAfterDefinitionReturnType: None
 AlwaysBreakAfterReturnType: None
+BreakBeforeTernaryOperators: false
 ColumnLimit: 100
