@@ -2,13 +2,13 @@
 #include <iostream>
 #include <iterator>
 
-#include "simple/container_algorithm.h"
-#include "simple/vector.h"
+#include "constexpr_containers/algorithm.h"
+#include "constexpr_containers/vector.h"
 
 constexpr auto f()
 {
-  simple::vector<int> v(10);
-  simple::vector<int> v2(v);
+  constexpr_containers::vector<int> v(10);
+  constexpr_containers::vector<int> v2(v);
   v.push_back(1);
   v.emplace_back(2);
   v.pop_back();
@@ -18,11 +18,11 @@ constexpr auto f()
 
 constexpr auto h()
 {
-  simple::vector<int> v1(10);
-  simple::vector<int> v2(10);
-  simple::vector<int> v3(10);
+  constexpr_containers::vector<int> v1(10);
+  constexpr_containers::vector<int> v2(10);
+  constexpr_containers::vector<int> v3(10);
   v1.clear();
-  simple::zip_transform( //
+  constexpr_containers::zip_transform( //
     v2.begin(),
     v2.end(),
     std::back_inserter(v1),
@@ -35,9 +35,9 @@ int main()
 {
   [[maybe_unused]] std::array<int, f()> a;
   [[maybe_unused]] std::array<int, h()> c;
-  std::cout << sizeof(simple::vector<int>) << '\n';
-  simple::vector<int> v;
-  for (auto&& elem : simple::make_range(v.begin(), v.end())) {
+  std::cout << sizeof(constexpr_containers::vector<int>) << '\n';
+  constexpr_containers::vector<int> v;
+  for (auto&& elem : constexpr_containers::make_range(v.begin(), v.end())) {
     elem = 1;
   }
 }

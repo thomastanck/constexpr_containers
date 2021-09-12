@@ -11,7 +11,9 @@
 #include <type_traits>
 #include <utility>
 
-namespace simple {
+#include "constexpr_containers/algorithm.h"
+
+namespace constexpr_containers {
 
 template<typename T, typename Allocator>
 struct vector_base
@@ -741,4 +743,4 @@ private:
   }
 };
 
-} // namespace simple
+} // namespace constexpr_containers

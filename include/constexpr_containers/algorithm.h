@@ -6,7 +6,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace simple {
+namespace constexpr_containers {
 
 template<typename Iterator>
 using iterator_value_t = typename std::iterator_traits<Iterator>::value_type;
@@ -160,4 +160,4 @@ constexpr //
   return dst;
 }
 
-} // namespace simple
+} // namespace constexpr_containers

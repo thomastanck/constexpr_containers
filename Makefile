@@ -4,7 +4,7 @@ LIBSRCS := \
 #
 
 MAINSRCS := \
-	test/container_algorithm.cc \
+	test/algorithm.cc \
 	test/main.cc \
 	test/vector_base.cc \
 	test/vector.cc \
