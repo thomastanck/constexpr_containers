@@ -79,7 +79,7 @@ public:
     vector_base(size_type count, const T& value, const Allocator& alloc = Allocator())
     : m_alloc(alloc)
   {
-    allocate(count);
+    allocate(count, m_alloc);
     for (auto& elem : make_range(m_begin, m_realend)) {
       AllocTraitsT::construct(m_alloc, std::launder(&elem), value);
     }
