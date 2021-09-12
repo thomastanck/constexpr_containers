@@ -16,70 +16,68 @@
 
 namespace simple {
 
-template<typename ValueT, typename AllocT = std::allocator<ValueT>>
+template<typename T, typename Allocator = std::allocator<T>>
 struct vector
 {
-
   //////////////////
   // Member types //
   //////////////////
 
-  using AllocTraitsT = std::allocator_traits<AllocT>;
-  using InitListT = std::initializer_list<ValueT>;
-  using PtrT = ValueT*;
-  using ConstPtrT = const ValueT*;
-  using RevPtrT = std::reverse_iterator<ValueT*>;
-  using RevConstPtrT = std::reverse_iterator<const ValueT*>;
-  using RefT = ValueT&;
-  using ConstRefT = const ValueT&;
-  using CompT = std::conditional_t<std::three_way_comparable<ValueT>,
-                                   decltype(std::declval<ValueT>() <=> std::declval<ValueT>()),
-                                   std::weak_ordering>;
+private:
+  // Purely to make notation easier
+  using AllocTraitsT = std::allocator_traits<Allocator>;
 
-  using value_type = ValueT;
-  using allocator_type = AllocT;
-  using size_type = size_t;
-  using difference_type = ptrdiff_t;
-  using reference = RefT;
-  using const_reference = ConstRefT;
-  using pointer = PtrT;
-  using const_pointer = ConstPtrT;
-  using iterator = PtrT;
-  using const_iterator = ConstPtrT;
-  using reverse_iterator = RevPtrT;
-  using reverse_const_iterator = RevConstPtrT;
+public:
+  using value_type = T;
+  using allocator_type = Allocator;
+  using size_type = typename AllocTraitsT::size_type;
+  using difference_type = typename AllocTraitsT::difference_type;
+  using reference = T&;
+  using const_reference = const T&;
+  using pointer = typename AllocTraitsT::pointer;
+  using const_pointer = typename AllocTraitsT::const_pointer;
+  using iterator = pointer;
+  using const_iterator = const_pointer;
+  using reverse_iterator = std::reverse_iterator<iterator>;
+  using reverse_const_iterator = std::reverse_iterator<const_iterator>;
+  using comparison_type = std::conditional_t<std::three_way_comparable<T>,
+                                             decltype(std::declval<T>() <=> std::declval<T>()),
+                                             std::weak_ordering>;
 
   /////////////////
   // Data layout //
   /////////////////
 private:
-  PtrT m_begin;
-  PtrT m_end;
-  PtrT m_realend;
-  [[no_unique_address]] AllocT m_alloc;
+  pointer m_begin;
+  pointer m_end;
+  pointer m_realend;
+  [[no_unique_address]] Allocator m_alloc;
 
 public:
   //////////////////
   // Constructors //
   //////////////////
 
-  constexpr vector() noexcept(noexcept(AllocT()))
+  constexpr  //
+    vector() //
+    noexcept(noexcept(Allocator()))
     : m_begin(nullptr)
     , m_end(nullptr)
     , m_realend(nullptr)
     , m_alloc()
   {}
 
-  constexpr vector(const AllocT alloc) noexcept
+  constexpr explicit               //
+    vector(const Allocator& alloc) //
+    noexcept
     : m_begin(nullptr)
     , m_end(nullptr)
     , m_realend(nullptr)
     , m_alloc(alloc)
   {}
 
-  template<typename T>
-  constexpr explicit //
-    vector(size_t count, const T& value, const AllocT& alloc = AllocT())
+  constexpr //
+    vector(size_type count, const T& value, const Allocator& alloc = Allocator())
     : m_alloc(alloc)
   {
     allocate(count);
@@ -90,7 +88,7 @@ public:
   }
 
   constexpr explicit //
-    vector(size_t count, const AllocT& alloc = AllocT())
+    vector(size_type count, const Allocator& alloc = Allocator())
     : m_alloc(alloc)
   {
     allocate(count, m_alloc);
@@ -100,7 +98,7 @@ public:
     m_end = m_realend;
   }
 
-  constexpr vector(InitListT il, const AllocT& alloc = AllocT())
+  constexpr vector(std::initializer_list<T> il, const Allocator& alloc = Allocator())
     : m_alloc(alloc)
   {
     allocate(il.size());
@@ -124,7 +122,7 @@ public:
   }
 
   constexpr //
-    vector(const vector& other, const AllocT& alloc)
+    vector(const vector& other, const Allocator& alloc)
     : m_alloc(alloc)
   {
     allocate(other.size(), m_alloc);
@@ -143,8 +141,8 @@ public:
     other.m_begin = other.m_end = other.m_realend = nullptr;
   }
 
-  constexpr                                     //
-    vector(vector&& other, const AllocT& alloc) //
+  constexpr                                        //
+    vector(vector&& other, const Allocator& alloc) //
     : m_alloc(alloc)
   {
     if (m_alloc != other.m_alloc) {
@@ -269,7 +267,7 @@ public:
     return *this;
   }
 
-  constexpr vector& operator=(InitListT il)
+  constexpr vector& operator=(std::initializer_list<T> il)
   {
     if (il.size() > capacity()) {
       // We must realloc, so directly move into new buffer
@@ -322,10 +320,9 @@ public:
     std::swap(m_realend, other.m_realend);
   }
 
-  template<typename T>
   friend //
     void
-    swap(vector<T>& a, vector<T>& b) //
+    swap(vector& a, vector& b) //
     noexcept(AllocTraitsT::propagate_on_container_swap::value ||
              AllocTraitsT::is_always_equal::value)
   {
@@ -335,7 +332,7 @@ public:
   constexpr ~vector() { deallocate(); }
 
 private:
-  constexpr void check_range(size_t n) const
+  constexpr void check_range(size_type n) const
   {
     if (n >= size()) {
       // TODO: do fancier formatting when I implement constexpr string (?)
@@ -345,72 +342,72 @@ private:
 
 public:
   [[nodiscard]] constexpr //
-    RefT
-    at(size_t i)
+    reference
+    at(size_type pos)
   {
-    check_range(i);
-    return *this[i];
+    check_range(pos);
+    return *this[pos];
   }
   [[nodiscard]] constexpr //
-    ConstRefT
-    at(size_t i) //
+    const_reference
+    at(size_type pos) //
     const
   {
-    check_range(i);
-    return *this[i];
+    check_range(pos);
+    return *this[pos];
   }
 
   [[nodiscard]] constexpr //
-    RefT
-    operator[](size_t i) //
+    reference
+    operator[](size_type pos) //
     noexcept
   {
-    return *std::launder(m_begin + i);
+    return *std::launder(m_begin + pos);
   }
   [[nodiscard]] constexpr //
-    ConstRefT
-    operator[](size_t i) //
+    const_reference
+    operator[](size_type pos) //
     const noexcept
   {
-    return *std::launder(m_begin + i);
+    return *std::launder(m_begin + pos);
   }
 
   /////////////
   // Getters //
   /////////////
-  [[nodiscard]] constexpr /*******/ PtrT data() /************/ noexcept { return m_begin; }
-  [[nodiscard]] constexpr /**/ ConstPtrT data() /******/ const noexcept { return m_begin; }
-  [[nodiscard]] constexpr /*****/ AllocT get_allocator() const noexcept { return m_alloc; }
+  [[nodiscard]] constexpr /***/ pointer data() /************/ noexcept { return m_begin; }
+  [[nodiscard]] constexpr const_pointer data() /******/ const noexcept { return m_begin; }
+  [[nodiscard]] constexpr /****/ Allocator get_allocator() const noexcept { return m_alloc; }
 
-  [[nodiscard]] constexpr /**/ RefT front() /********/ noexcept { return *m_begin; }
-  [[nodiscard]] constexpr ConstRefT front() /**/ const noexcept { return *m_begin; }
-  [[nodiscard]] constexpr /**/ RefT back() /*********/ noexcept { return *(m_end - 1); }
-  [[nodiscard]] constexpr ConstRefT back() /***/ const noexcept { return *(m_end - 1); }
+  [[nodiscard]] constexpr /***/ reference front() /********/ noexcept { return *m_begin; }
+  [[nodiscard]] constexpr const_reference front() /**/ const noexcept { return *m_begin; }
+  [[nodiscard]] constexpr /***/ reference back() /*********/ noexcept { return *(m_end - 1); }
+  [[nodiscard]] constexpr const_reference back() /***/ const noexcept { return *(m_end - 1); }
 
-  [[nodiscard]] constexpr /**/ PtrT begin() /*********/ noexcept { return m_begin; }
-  [[nodiscard]] constexpr ConstPtrT begin() /***/ const noexcept { return m_begin; }
-  [[nodiscard]] constexpr /**/ PtrT end() /***********/ noexcept { return m_end; }
-  [[nodiscard]] constexpr ConstPtrT end() /*****/ const noexcept { return m_end; }
-  [[nodiscard]] constexpr ConstPtrT cbegin() /**/ const noexcept { return m_begin; }
-  [[nodiscard]] constexpr ConstPtrT cend() /****/ const noexcept { return m_end; }
+  [[nodiscard]] constexpr /***/ iterator begin() /*********/ noexcept { return m_begin; }
+  [[nodiscard]] constexpr const_iterator begin() /***/ const noexcept { return m_begin; }
+  [[nodiscard]] constexpr /***/ iterator end() /***********/ noexcept { return m_end; }
+  [[nodiscard]] constexpr const_iterator end() /*****/ const noexcept { return m_end; }
+  [[nodiscard]] constexpr const_iterator cbegin() /**/ const noexcept { return m_begin; }
+  [[nodiscard]] constexpr const_iterator cend() /****/ const noexcept { return m_end; }
 
-  [[nodiscard]] constexpr /**/ RevPtrT rbegin() /*********/ noexcept { return m_begin; }
-  [[nodiscard]] constexpr RevConstPtrT rbegin() /***/ const noexcept { return m_begin; }
-  [[nodiscard]] constexpr /**/ RevPtrT rend() /***********/ noexcept { return m_end; }
-  [[nodiscard]] constexpr RevConstPtrT rend() /*****/ const noexcept { return m_end; }
-  [[nodiscard]] constexpr RevConstPtrT crbegin() /**/ const noexcept { return m_begin; }
-  [[nodiscard]] constexpr RevConstPtrT crend() /****/ const noexcept { return m_end; }
+  [[nodiscard]] constexpr /***/ reverse_iterator rbegin() /*********/ noexcept { return m_begin; }
+  [[nodiscard]] constexpr reverse_const_iterator rbegin() /***/ const noexcept { return m_begin; }
+  [[nodiscard]] constexpr /***/ reverse_iterator rend() /***********/ noexcept { return m_end; }
+  [[nodiscard]] constexpr reverse_const_iterator rend() /*****/ const noexcept { return m_end; }
+  [[nodiscard]] constexpr reverse_const_iterator crbegin() /**/ const noexcept { return m_begin; }
+  [[nodiscard]] constexpr reverse_const_iterator crend() /****/ const noexcept { return m_end; }
 
-  [[nodiscard]] constexpr size_t size() /*******/ const noexcept { return m_end - m_begin; }
-  [[nodiscard]] constexpr size_t capacity() /***/ const noexcept { return m_realend - m_begin; }
-  [[nodiscard]] constexpr bool empty() /********/ const noexcept { return size() == 0; }
+  [[nodiscard]] constexpr size_type size() /******/ const noexcept { return m_end - m_begin; }
+  [[nodiscard]] constexpr size_type capacity() /**/ const noexcept { return m_realend - m_begin; }
+  [[nodiscard]] constexpr bool empty() /**********/ const noexcept { return size() == 0; }
   [[nodiscard]] constexpr //
-    size_t
+    size_type
     max_size() //
     const
   {
-    const size_t diffmax = std::numeric_limits<ptrdiff_t>::max() / sizeof(ValueT);
-    const size_t allocmax = AllocTraitsT::max_size(m_alloc);
+    const size_type diffmax = std::numeric_limits<difference_type>::max() / sizeof(T);
+    const size_type allocmax = AllocTraitsT::max_size(m_alloc);
     return std::min(diffmax, allocmax);
   }
 
@@ -419,7 +416,7 @@ public:
   ////////////////////
   constexpr //
     void
-    reserve(size_t new_cap)
+    reserve(size_type new_cap)
   {
     if (new_cap > capacity()) {
       auto tmp = allocate_tmp(new_cap, m_alloc);
@@ -458,7 +455,7 @@ public:
 
   constexpr //
     void
-    resize(size_t count)
+    resize(size_type count)
   {
     if (count > capacity()) {
       auto tmp = allocate_tmp(count, m_alloc);
@@ -488,7 +485,7 @@ public:
 
   constexpr //
     void
-    resize(size_t count, const value_type& value)
+    resize(size_type count, const value_type& value)
   {
     if (count > capacity()) {
       auto tmp = allocate_tmp(count, m_alloc);
@@ -533,13 +530,13 @@ public:
   /////////////////////////
 
   // Strong exception guarantee
-  template<typename... T>
+  template<typename... Args>
   constexpr //
     void
-    emplace_back(T&&... args)
+    emplace_back(Args&&... args)
   {
     if (m_end < m_realend) {
-      AllocTraitsT::construct(m_alloc, std::launder(m_end), std::forward<T>(args)...);
+      AllocTraitsT::construct(m_alloc, std::launder(m_end), std::forward<Args>(args)...);
       ++m_end;
     }
 
@@ -549,7 +546,7 @@ public:
     auto tmp = allocate_tmp(newcap, m_alloc);
     try {
       // construct new value into tmp, we should do this first in case input is part of the vector
-      AllocTraitsT::construct(m_alloc, tmp + oldsize, std::forward<T>(args)...);
+      AllocTraitsT::construct(m_alloc, tmp + oldsize, std::forward<Args>(args)...);
       // move existing values if noexcept, else copy
       uninitialized_move_if_noexcept_launder(m_begin, m_end, tmp, m_alloc);
     } catch (...) {
@@ -564,20 +561,16 @@ public:
   }
 
   // Strong exception guarantee
-  template<typename T>
-  constexpr //
-    void
-    push_back(T&& v)
-  {
-    emplace_back(std::forward<T>(v));
-  }
+  constexpr void push_back(const T& v) { emplace_back(v); }
+  // Strong exception guarantee
+  constexpr void push_back(T&& v) { emplace_back(std::move(v)); }
 
   // Conditionally strong exception guarantee
   // as long as value_type is nothrow assignable and constructible either by move or copy.
-  template<typename... T>
+  template<typename... Args>
   constexpr //
-    PtrT
-    emplace(ConstPtrT pos, T&&... args)
+    pointer
+    emplace(const_pointer pos, Args&&... args)
   {
     if (pos == m_end) {
       emplace_back(args...);
@@ -613,7 +606,7 @@ public:
     // ... unfortunately we can't shift the elements first, THEN construct
     // because if the constructor throws we aren't supposed to UB
     // So we start by constructing the element into a temporary that we move into place later.
-    auto tmp = ValueT(std::forward<T>(args)...);
+    auto tmp = T(std::forward<T>(args)...);
     // After this point, everything is either allowed to UB or is noexcept :)
 
     // Shift elements back
@@ -644,22 +637,22 @@ public:
     bool
     operator==(const vector& other)                      //
     const noexcept(noexcept(*begin() == *other.begin())) //
-    requires std::equality_comparable<ValueT>
+    requires std::equality_comparable<T>
   {
     return std::equal(begin(), end(), other.begin(), other.end());
   }
 
   [[nodiscard]] constexpr //
-    CompT
+    comparison_type
     operator<=>(const vector& other)                     //
     const noexcept(noexcept(*begin() == *other.begin())) //
-    requires std::three_way_comparable<ValueT> ||        //
-    requires(const ValueT& elem)
+    requires std::three_way_comparable<T> ||             //
+    requires(const T& elem)
   {
     elem < elem;
   } //
   {
-    if constexpr (std::three_way_comparable<ValueT>) {
+    if constexpr (std::three_way_comparable<T>) {
       return std::lexicographical_compare_three_way(m_begin, m_end, other.m_begin, other.m_end);
     } else {
       return std::lexicographical_compare_three_way(
@@ -678,7 +671,7 @@ public:
 private:
   constexpr //
     void
-    allocate(size_t capacity, AllocT& alloc)
+    allocate(size_type capacity, Allocator& alloc)
   {
     try {
       m_begin = AllocTraitsT::allocate(alloc, capacity);
@@ -693,8 +686,8 @@ private:
   }
 
   constexpr //
-    PtrT
-    allocate_tmp(size_t capacity, AllocT& alloc)
+    pointer
+    allocate_tmp(size_type capacity, Allocator& alloc)
   {
     try {
       return AllocTraitsT::allocate(alloc, capacity, m_begin);
