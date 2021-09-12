@@ -97,27 +97,10 @@ public:
     m_end = m_realend;
   }
 
-  // Tighter overload to reserve up front
-  template<std::random_access_iterator RandomAccessIt>
-  constexpr vector_base(RandomAccessIt first,
-                        RandomAccessIt last,
-                        const Allocator& alloc = Allocator())
-    : m_alloc(alloc)
-  {
-    if (first < last) {
-      allocate(last - first);
-      m_end = m_begin;
-      for (const auto& elem : make_range(first, last)) {
-        push_back(elem);
-      }
-    } else {
-      m_begin = m_end = m_realend = nullptr;
-    }
-  }
-
   // Looser overload that allows any input iterator
   template<std::input_iterator InputIt>
-  constexpr vector_base(InputIt first, InputIt last, const Allocator& alloc = Allocator())
+  constexpr //
+    vector_base(InputIt first, InputIt last, const Allocator& alloc = Allocator())
     : m_begin(nullptr)
     , m_end(nullptr)
     , m_realend(nullptr)
@@ -128,13 +111,17 @@ public:
     }
   }
 
-  constexpr vector_base(std::initializer_list<T> il, const Allocator& alloc = Allocator())
+  // Tighter overload to reserve up front
+  template<std::random_access_iterator RandomAccessIt>
+  constexpr //
+    vector_base(RandomAccessIt first, RandomAccessIt last, const Allocator& alloc = Allocator())
     : m_alloc(alloc)
   {
-    allocate(il.size());
-    m_end = m_begin;
-    for (const auto& elem : il) {
-      push_back(elem);
+    if (last - first > 0) {
+      allocate(last - first, m_alloc);
+      m_end = uninitialized_copy(first, last, m_begin, m_alloc);
+    } else {
+      m_begin = m_end = m_realend = nullptr;
     }
   }
 
@@ -144,21 +131,19 @@ public:
 
   constexpr //
     vector_base(const vector_base& other)
-    : m_alloc(AllocTraitsT::select_on_container_copy_construction(other.m_alloc))
-  {
-    allocate(other.size(), m_alloc);
-    uninitialized_copy(other.m_begin, other.m_end, m_begin, m_alloc);
-    m_end = m_realend;
-  }
+    : vector_base(other.m_begin,
+                  other.m_end,
+                  AllocTraitsT::select_on_container_copy_construction(other.m_alloc))
+  {}
 
   constexpr //
     vector_base(const vector_base& other, const Allocator& alloc)
-    : m_alloc(alloc)
-  {
-    allocate(other.size(), m_alloc);
-    uninitialized_copy(other.m_begin, other.m_end, m_begin, m_alloc);
-    m_end = m_realend;
-  }
+    : vector_base(other.m_begin, other.m_end, alloc)
+  {}
+
+  constexpr vector_base(std::initializer_list<T> il, const Allocator& alloc = Allocator())
+    : vector_base(il.begin(), il.end(), alloc)
+  {}
 
   constexpr                          //
     vector_base(vector_base&& other) //
