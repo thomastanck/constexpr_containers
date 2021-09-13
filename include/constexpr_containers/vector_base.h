@@ -282,7 +282,9 @@ public:
     return *this;
   }
 
-  constexpr vector_base& operator=(std::initializer_list<T> il)
+  constexpr //
+    vector_base&
+    operator=(std::initializer_list<T> il)
   {
     if (il.size() > capacity()) {
       // We must realloc, so directly move into new buffer
@@ -347,7 +349,10 @@ public:
   constexpr ~vector_base() { deallocate(); }
 
 private:
-  constexpr void check_range(size_type n) const
+  constexpr //
+    void
+    check_range(size_type n) //
+    const
   {
     if (n >= size()) {
       // TODO: do fancier formatting when I implement constexpr string (?)
@@ -390,6 +395,7 @@ public:
   /////////////
   // Getters //
   /////////////
+
   [[nodiscard]] constexpr /********/ pointer data() /************/ noexcept { return m_begin; }
   [[nodiscard]] constexpr /**/ const_pointer data() /******/ const noexcept { return m_begin; }
   [[nodiscard]] constexpr /******/ Allocator get_allocator() const noexcept { return m_alloc; }
@@ -406,12 +412,12 @@ public:
   [[nodiscard]] constexpr const_iterator cbegin() /**/ const noexcept { return m_begin; }
   [[nodiscard]] constexpr const_iterator cend() /****/ const noexcept { return m_end; }
 
-  [[nodiscard]] constexpr /***/ reverse_iterator rbegin() /*********/ noexcept { return m_begin; }
-  [[nodiscard]] constexpr reverse_const_iterator rbegin() /***/ const noexcept { return m_begin; }
-  [[nodiscard]] constexpr /***/ reverse_iterator rend() /***********/ noexcept { return m_end; }
-  [[nodiscard]] constexpr reverse_const_iterator rend() /*****/ const noexcept { return m_end; }
-  [[nodiscard]] constexpr reverse_const_iterator crbegin() /**/ const noexcept { return m_begin; }
-  [[nodiscard]] constexpr reverse_const_iterator crend() /****/ const noexcept { return m_end; }
+  [[nodiscard]] constexpr /***/ reverse_iterator rbegin() /*********/ noexcept { return m_end; }
+  [[nodiscard]] constexpr reverse_const_iterator rbegin() /***/ const noexcept { return m_end; }
+  [[nodiscard]] constexpr /***/ reverse_iterator rend() /***********/ noexcept { return m_begin; }
+  [[nodiscard]] constexpr reverse_const_iterator rend() /*****/ const noexcept { return m_begin; }
+  [[nodiscard]] constexpr reverse_const_iterator crbegin() /**/ const noexcept { return m_end; }
+  [[nodiscard]] constexpr reverse_const_iterator crend() /****/ const noexcept { return m_begin; }
 
   [[nodiscard]] constexpr size_type size() /******/ const noexcept { return m_end - m_begin; }
   [[nodiscard]] constexpr size_type capacity() /**/ const noexcept { return m_realend - m_begin; }
@@ -429,6 +435,7 @@ public:
   ////////////////////
   // Size modifiers //
   ////////////////////
+
   constexpr //
     void
     reserve(size_type new_cap)
@@ -557,7 +564,7 @@ public:
 
     // Ensure we've fully prepared a tmp buffer before deallocating m_begin
     auto oldsize = size();
-    auto newcap = size() * 2;
+    auto newcap = size() * 2 + 1;
     auto tmp = allocate_tmp(newcap, m_alloc);
     try {
       // construct new value into tmp, we should do this first in case input is part of the
@@ -597,7 +604,7 @@ public:
       // We need to realloc
       auto index = pos - m_begin;
       auto oldsize = size();
-      auto newcap = size() * 2;
+      auto newcap = size() * 2 + 1;
       auto tmp = allocate_tmp(newcap, m_alloc);
       try {
         // construct new value into tmp, we should do this first in case input is part of the
@@ -627,12 +634,85 @@ public:
     // After this point, everything is either allowed to UB or is noexcept :)
 
     // Shift elements back
-    uninitialized_move_if_noexcept_launder(m_end - 1, m_end, m_end, m_alloc);
-    move_if_noexcept_launder(pos, m_end - 1, pos + 1, m_alloc);
+    uninitialized_move_if_noexcept_launder_backward(m_end - 1, m_end, m_end + 1, m_alloc);
+    move_if_noexcept_launder_backward(pos, m_end - 1, m_end);
     // Now move the tmp var into place
     *pos = std::move_if_noexcept(tmp);
     return pos;
   }
+
+  constexpr //
+    iterator
+    insert(const_iterator pos, const T& value)
+  {
+    insert(pos, 1, value);
+  }
+
+  constexpr //
+    iterator
+    insert(const_iterator pos, T&& value);
+
+  constexpr //
+    iterator
+    insert(const_iterator pos, size_type count, const T& value)
+  {
+    if (count != 0) {
+      if (pos == m_end) {
+        emplace_back(value);
+        return m_end - 1;
+      }
+
+      if (m_end + count < m_realend) {
+        // We need to realloc
+        auto index = pos - m_begin;
+        auto oldsize = size();
+        auto newcap = size() * 2 + count;
+        auto tmp = allocate_tmp(newcap, m_alloc);
+        try {
+          // construct new values into tmp, we should do this first in case input is part of the
+          // vector_base
+          for (auto it = tmp + index; it < tmp + index + count; ++it) {
+            AllocTraitsT::construct(m_alloc, it, value);
+          }
+          // move existing values if noexcept, else copy
+          uninitialized_move_if_noexcept_launder(m_begin, pos, tmp, m_alloc);
+          uninitialized_move_if_noexcept_launder(pos, m_end, tmp + index + count, m_alloc);
+        } catch (...) {
+          AllocTraitsT::deallocate(m_alloc, tmp, newcap);
+          throw;
+        }
+        // buffer is ready, do the swap
+        AllocTraitsT::deallocate(m_alloc, m_begin, capacity());
+        m_begin = tmp;
+        m_end = tmp + oldsize + count;
+        m_realend = tmp + newcap;
+        return m_begin + index;
+      }
+
+      // No realloc needed
+      // We're allowed to UB if the move / copy constructor / assignment throws
+      // ... unfortunately we can't shift the elements first, THEN construct
+      // because if the constructor throws we aren't supposed to UB
+      // So we start by constructing the element into a temporary that we move into place later.
+      auto tmp = T(value);
+      // After this point, everything is either allowed to UB or is noexcept :)
+
+      // Shift elements back
+      uninitialized_move_if_noexcept_launder_backward(m_end - count, m_end, m_end + count, m_alloc);
+      move_if_noexcept_launder_backward(pos, m_end - count, m_end);
+      // Now copy the tmp var into place repeatedly
+      std::fill(pos, pos + count, tmp);
+      return pos;
+    }
+  }
+
+  template<std::input_iterator InputIt>
+  constexpr //
+    iterator
+    insert(const_iterator pos, InputIt first, InputIt last);
+  constexpr //
+    iterator
+    insert(const_iterator pos, std::initializer_list<T> ilist);
 
   ///////////////////////
   // Removal modifiers //

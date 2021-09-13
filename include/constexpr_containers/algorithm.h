@@ -160,4 +160,38 @@ constexpr //
   return dst;
 }
 
+template<std::input_iterator InputIt,
+         std::input_or_output_iterator OutputIt,
+         typename Allocator = std::allocator<iterator_value_t<OutputIt>>>
+constexpr //
+  OutputIt
+  move_if_noexcept_launder_backward(InputIt src, InputIt src_end, OutputIt dst_end)
+{
+  for (; src != src_end; --src_end, --dst_end) {
+    --src_end;
+    --dst_end;
+    *dst_end = std::move_if_noexcept(*std::launder(src_end));
+  }
+  return dst_end;
+}
+
+template<std::input_iterator InputIt,
+         std::input_or_output_iterator OutputIt,
+         typename Allocator = std::allocator<iterator_value_t<OutputIt>>>
+constexpr //
+  OutputIt
+  uninitialized_move_if_noexcept_launder_backward(InputIt src,
+                                                  InputIt src_end,
+                                                  OutputIt dst_end,
+                                                  Allocator alloc)
+{
+  for (; src != src_end; --src_end, --dst_end) {
+    --src_end;
+    --dst_end;
+    std::allocator_traits<Allocator>::construct(
+      alloc, dst_end, std::move_if_noexcept(*std::launder(src_end)));
+  }
+  return dst_end;
+}
+
 } // namespace constexpr_containers
