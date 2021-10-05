@@ -650,7 +650,46 @@ public:
 
   constexpr //
     iterator
-    insert(const_iterator pos, T&& value);
+    insert(const_iterator pos, T&& value)
+  {
+    if (pos == m_end) {
+      emplace_back(value);
+      return m_end - 1;
+    }
+
+    if (m_end + 1 < m_realend) {
+      // We need to realloc
+      auto index = pos - m_begin;
+      auto oldsize = size();
+      auto newcap = size() * 2 + 1;
+      auto tmp = allocate_tmp(newcap, m_alloc);
+      try {
+        // construct new values into tmp, we should do this first in case input is part of the
+        // vector_base
+        AllocTraitsT::construct(m_alloc, tmp + index, std::move(value));
+        // move existing values if noexcept, else copy
+        uninitialized_move_if_noexcept_launder(m_begin, pos, tmp, m_alloc);
+        uninitialized_move_if_noexcept_launder(pos, m_end, tmp + index + 1, m_alloc);
+      } catch (...) {
+        AllocTraitsT::deallocate(m_alloc, tmp, newcap);
+        throw;
+      }
+      // buffer is ready, do the swap
+      AllocTraitsT::deallocate(m_alloc, m_begin, capacity());
+      m_begin = tmp;
+      m_end = tmp + oldsize + 1;
+      m_realend = tmp + newcap;
+      return m_begin + index;
+    }
+
+    // No realloc needed
+    // Shift elements back
+    uninitialized_move_if_noexcept_launder_backward(m_end - 1, m_end, m_end + 1, m_alloc);
+    move_if_noexcept_launder_backward(pos, m_end - 1, m_end);
+    // Now move value into place
+    pos = std::move(value);
+    return pos;
+  }
 
   constexpr //
     iterator
@@ -690,29 +729,41 @@ public:
       }
 
       // No realloc needed
-      // We're allowed to UB if the move / copy constructor / assignment throws
-      // ... unfortunately we can't shift the elements first, THEN construct
-      // because if the constructor throws we aren't supposed to UB
-      // So we start by constructing the element into a temporary that we move into place later.
-      auto tmp = T(value);
-      // After this point, everything is either allowed to UB or is noexcept :)
-
       // Shift elements back
       uninitialized_move_if_noexcept_launder_backward(m_end - count, m_end, m_end + count, m_alloc);
       move_if_noexcept_launder_backward(pos, m_end - count, m_end);
-      // Now copy the tmp var into place repeatedly
-      std::fill(pos, pos + count, tmp);
+      // Now copy the value into place repeatedly
+      std::fill(pos, pos + count, value);
       return pos;
     }
   }
 
+  // Not quite the same as LegacyInputIterator,
+  // but this way is easier and shouldn't break any existing code anyway.
   template<std::input_iterator InputIt>
   constexpr //
     iterator
-    insert(const_iterator pos, InputIt first, InputIt last);
+    insert(const_iterator pos, InputIt first, InputIt last)
+  {
+    // Since input iterator is single pass, we will just insert one at a time the dumb way.
+    // TODO: copy first to a vector then call the random_access_iterator overload.
+
+    // Convert iterator to an index first to handle reallocation case
+    auto index = std::distance(m_begin, pos);
+    while (first != last) {
+      insert(m_begin + index, *first);
+      ++index;
+      ++first;
+    }
+    return m_begin + index;
+  }
+
   constexpr //
     iterator
-    insert(const_iterator pos, std::initializer_list<T> ilist);
+    insert(const_iterator pos, std::initializer_list<T> ilist)
+  {
+    return insert(pos, ilist.begin(), ilist.end());
+  }
 
   ///////////////////////
   // Removal modifiers //
