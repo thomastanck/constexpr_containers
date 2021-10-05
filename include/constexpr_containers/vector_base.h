@@ -777,6 +777,24 @@ public:
     --m_end;
   }
 
+  constexpr //
+    iterator
+    erase(const_iterator pos)
+  {
+    return erase(pos, pos + 1);
+  }
+
+  constexpr //
+    iterator
+    erase(const_iterator first, const_iterator last)
+  {
+    move_if_noexcept_launder(last, m_end, first, m_alloc);
+    for (size_t i = 0; i < last - first; ++i) {
+      pop_back();
+    }
+    return first;
+  }
+
   //////////////////////////
   // Comparison operators //
   //////////////////////////
