@@ -877,4 +877,26 @@ private:
   }
 };
 
+template<typename T, typename Alloc, typename U>
+constexpr //
+  typename vector_base<T, Alloc>::size_type
+  erase(vector_base<T, Alloc>& c, const U& value)
+{
+  auto it = std::remove(c.begin(), c.end(), value);
+  auto r = std::distance(it, c.end());
+  c.erase(it, c.end());
+  return r;
+}
+
+template<typename T, typename Alloc, typename Pred>
+constexpr //
+  typename vector_base<T, Alloc>::size_type
+  erase_if(vector_base<T, Alloc>& c, Pred pred)
+{
+  auto it = std::remove_if(c.begin(), c.end(), pred);
+  auto r = std::distance(it, c.end());
+  c.erase(it, c.end());
+  return r;
+}
+
 } // namespace constexpr_containers
